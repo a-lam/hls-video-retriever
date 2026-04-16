@@ -1,0 +1,39 @@
+import builtins
+import os
+import sys
+
+
+def _fmt_bytes(n):
+    if n >= 1_073_741_824:
+        return f"{n / 1_073_741_824:.2f} GB"
+    if n >= 1_048_576:
+        return f"{n / 1_048_576:.1f} MB"
+    return f"{n / 1024:.1f} KB"
+
+
+class Logger:
+    """Print messages and progress to stdout."""
+
+    def print(self, *args, **kwargs):
+        builtins.print(*args, **kwargs)
+
+    def status(self, msg):
+        """Overwrite a single status line."""
+        sys.stdout.write(f"\r  {msg:<70}")
+        sys.stdout.flush()
+
+    def progress(self, current, total, total_bytes):
+        """Update an inline progress bar."""
+        bar_width = 30
+        filled = int(bar_width * current / total) if total else 0
+        arrow = ">" if filled < bar_width else ""
+        bar = "=" * filled + arrow + " " * (bar_width - filled - len(arrow))
+        line = f"\r  Downloading  [{bar}] {current}/{total}  {_fmt_bytes(total_bytes)}"
+        sys.stdout.write(f"{line:<78}")
+        sys.stdout.flush()
+
+    def finish_progress(self, total_bytes, out_path):
+        """Replace the progress bar with a final completion line."""
+        name = os.path.basename(out_path)
+        sys.stdout.write(f"\r  Downloaded   {name}  ({_fmt_bytes(total_bytes)}){' ' * 20}\n")
+        sys.stdout.flush()
