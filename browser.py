@@ -94,13 +94,11 @@ async def get_video_urls_and_cookies(target_url, log):
         page.on("request", on_request)
 
         log.print(f"[*] Loading page: {target_url}")
-        log.status(f"Loading page: {target_url}")
         await page.goto(target_url, wait_until="load", timeout=PAGE_LOAD_TIMEOUT_MS)
 
         await _close_overlays(page, log)
 
         log.print("[*] Waiting for video player to initialise...")
-        log.status("Waiting for video player to initialise...")
         await page.wait_for_timeout(PLAYER_INIT_WAIT_MS)
 
         cookies = await context.cookies()

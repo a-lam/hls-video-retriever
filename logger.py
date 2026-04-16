@@ -1,4 +1,3 @@
-import builtins
 import os
 import sys
 
@@ -12,15 +11,10 @@ def _fmt_bytes(n):
 
 
 class Logger:
-    """Print messages and progress to stdout."""
+    """Logging helper. Only progress and success output reach the console."""
 
     def print(self, *args, **kwargs):
-        builtins.print(*args, **kwargs)
-
-    def status(self, msg):
-        """Overwrite a single status line."""
-        sys.stdout.write(f"\r  {msg:<70}")
-        sys.stdout.flush()
+        pass  # silent — retained for callers
 
     def progress(self, current, total, total_bytes):
         """Update an inline progress bar."""
@@ -37,3 +31,7 @@ class Logger:
         name = os.path.basename(out_path)
         sys.stdout.write(f"\r  Downloaded   {name}  ({_fmt_bytes(total_bytes)}){' ' * 20}\n")
         sys.stdout.flush()
+
+    def success(self, msg):
+        """Write a line to stdout — for final per-video and summary messages."""
+        print(msg)
