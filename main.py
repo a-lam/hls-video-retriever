@@ -62,9 +62,6 @@ def main():
             print("[-] No video page URLs found on the listing page.")
             sys.exit(1)
 
-        for url in video_urls:
-            print(url)
-
         txt_skip_names: set[str] = set()
         if os.path.isdir(VIDEOS_DIR):
             for fname in os.listdir(VIDEOS_DIR):
