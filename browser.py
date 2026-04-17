@@ -2,7 +2,7 @@ import asyncio
 
 from playwright.async_api import async_playwright
 
-from config import BLOCKED_DOMAINS
+from config import BLOCKED_DOMAINS, FALLBACK_PLAYLIST
 
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -70,7 +70,11 @@ async def get_video_urls_and_cookies(target_url, log):
 
         def on_request(request):
             url = request.url
-            is_video = ".m3u8" in url or (
+            filename = url.split("/")[-1].split("?")[0]
+            stem = filename.rsplit(".", 1)[0] if "." in filename else filename
+            is_m3u8 = ".m3u8" in url
+            is_playlist_stem = stem == FALLBACK_PLAYLIST
+            is_video = is_m3u8 or is_playlist_stem or (
                 ".mp4" in url
                 and not any(s in url for s in ("thumbnail", "thumb", "preview", "poster"))
             )
@@ -81,10 +85,10 @@ async def get_video_urls_and_cookies(target_url, log):
                 return
 
             req_headers = request.headers
-            if ".m3u8" in url and "master" in url:
+            if is_m3u8 and "master" in url:
                 log.print(f"[+] Master playlist: {url}")
                 captured.append((0, url, req_headers))
-            elif ".m3u8" in url:
+            elif is_m3u8 or is_playlist_stem:
                 log.print(f"[+] Playlist: {url}")
                 captured.append((1, url, req_headers))
             else:

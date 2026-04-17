@@ -1,7 +1,7 @@
 import re
 import urllib.parse
 
-from config import FALLBACK_M3U8, SEGMENT_THRESHOLD
+from config import FALLBACK_PLAYLIST, SEGMENT_THRESHOLD
 from http_client import fetch_m3u8_content
 
 
@@ -52,7 +52,7 @@ def select_candidate(captured, log):
     Priority:
       1. Exactly one master playlist → fetch it, return the highest-bandwidth sub-playlist.
       2. First regular playlist with more than SEGMENT_THRESHOLD segments.
-      3. First regular playlist whose filename matches FALLBACK_M3U8.
+      3. First regular playlist whose filename matches FALLBACK_PLAYLIST.
       4. None — nothing suitable found.
 
     Returns (url, req_headers) or None.
@@ -83,9 +83,11 @@ def select_candidate(captured, log):
                 log.print(f"[*] Selected playlist with {n} segments: {url}")
                 return url, hdrs
 
-    # Strategy 3: filename matches FALLBACK_M3U8
+    # Strategy 3: filename stem (without extension) matches FALLBACK_PLAYLIST
     for url, hdrs in regulars:
-        if url.split("/")[-1].split("?")[0] == FALLBACK_M3U8:
+        filename = url.split("/")[-1].split("?")[0]
+        stem = filename.rsplit(".", 1)[0] if "." in filename else filename
+        if stem == FALLBACK_PLAYLIST:
             log.print(f"[*] Selected fallback playlist: {url}")
             return url, hdrs
 

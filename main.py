@@ -49,6 +49,9 @@ def _process_video_url(url, log):
             os.remove(ts_path)
 
 
+CASE_INSENSITIVE_FS = os.name == "nt"
+
+
 def main():
     log = Logger()
 
@@ -62,10 +65,32 @@ def main():
         for url in video_urls:
             print(url)
 
+        txt_skip_names: set[str] = set()
+        if os.path.isdir(VIDEOS_DIR):
+            for fname in os.listdir(VIDEOS_DIR):
+                if fname.lower().endswith(".txt"):
+                    txt_path = os.path.join(VIDEOS_DIR, fname)
+                    with open(txt_path, encoding="utf-8", errors="ignore") as fh:
+                        for line in fh:
+                            name = line.strip()
+                            if name:
+                                txt_skip_names.add(name.lower() if CASE_INSENSITIVE_FS else name)
+
+        if txt_skip_names:
+            print(f"[*] Loaded {len(txt_skip_names)} entries from skip list")
+
         succeeded = 0
+        skipped = 0
         failures = []
 
         for url in video_urls:
+            expected_name = f"{slug_from_url(url)}.mp4"
+            lookup_key = expected_name.lower() if CASE_INSENSITIVE_FS else expected_name
+            if os.path.exists(os.path.join(VIDEOS_DIR, expected_name)) or lookup_key in txt_skip_names:
+                print(f"[~] Skipping (already exists): {expected_name}")
+                skipped += 1
+                continue
+
             try:
                 ok, reason = _process_video_url(url, log)
                 if ok:
@@ -77,7 +102,7 @@ def main():
 
         total = len(video_urls)
         failed = len(failures)
-        log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {failed} failed")
+        log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {skipped} skipped, {failed} failed")
         for url, reason in failures:
             log.success(f"    [-] {url} — {reason}")
 
