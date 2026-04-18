@@ -1,10 +1,11 @@
 import os
 import re
+from urllib.parse import unquote
 
 
 def slug_from_url(url):
     """Extract the last path segment from url and sanitise it for use as a filename."""
-    segment = url.rstrip("/").split("/")[-1]
+    segment = unquote(url.rstrip("/").split("/")[-1])
     return re.sub(r"[^\w\-]", "_", segment)[:60]
 
 
