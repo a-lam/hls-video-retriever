@@ -1,9 +1,17 @@
 import asyncio
 import os
+import re
 import sys
 import tempfile
+import time
 
-from config import TARGET_URL, LISTING_URL, VIDEOS_DIR
+
+def _format_elapsed(seconds):
+    h, rem = divmod(int(seconds), 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+from config import TARGET_URL, LISTING_URL, VIDEOS_DIR, MAX_LISTING_PAGES
 from logger import Logger
 from browser import get_video_urls_and_cookies
 from candidates import select_candidate
@@ -54,16 +62,16 @@ CASE_INSENSITIVE_FS = os.name == "nt"
 
 def main():
     log = Logger()
+    start_time = time.monotonic()
 
     if LISTING_URL:
         if not LISTING_URL.startswith(("http://", "https://")):
             print(f"[-] LISTING_URL does not look like a valid URL: {LISTING_URL!r}")
             sys.exit(1)
-        video_urls = asyncio.run(extract_video_page_urls(LISTING_URL, log))
 
-        if not video_urls:
-            print("[-] No video page URLs found on the listing page.")
-            sys.exit(1)
+        base_url = re.sub(r'/page/\d+/?$', '', LISTING_URL.rstrip('/')) + '/'
+        m = re.search(r'/page/(\d+)/?$', LISTING_URL)
+        start_page = int(m.group(1)) if m else 1
 
         txt_skip_names: set[str] = set()
         if os.path.isdir(VIDEOS_DIR):
@@ -82,27 +90,42 @@ def main():
         succeeded = 0
         skipped = 0
         failures = []
+        total = 0
 
-        for url in video_urls:
-            expected_name = f"{slug_from_url(url)}.mp4"
-            lookup_key = expected_name.lower() if CASE_INSENSITIVE_FS else expected_name
-            if os.path.exists(os.path.join(VIDEOS_DIR, expected_name)) or lookup_key in txt_skip_names:
-                print(f"[~] Skipping (already exists): {expected_name}")
-                skipped += 1
-                continue
+        for i in range(MAX_LISTING_PAGES):
+            page_num = start_page + i
+            page_url = base_url if page_num == 1 else f"{base_url}page/{page_num}/"
+            print(f"[*] Fetching listing page: {page_url}")
 
-            try:
-                ok, reason = _process_video_url(url, log)
-                if ok:
-                    succeeded += 1
-                else:
-                    failures.append((url, reason))
-            except Exception as e:
-                failures.append((url, f"unexpected error: {e}"))
+            video_urls = asyncio.run(extract_video_page_urls(page_url, log))
+            if not video_urls:
+                print(f"[-] No video URLs found on page {page_num} — stopping pagination")
+                break
 
-        total = len(video_urls)
+            if i == MAX_LISTING_PAGES - 1:
+                print(f"[*] Reached page limit of {MAX_LISTING_PAGES} — stopping pagination")
+
+            total += len(video_urls)
+            for url in video_urls:
+                expected_name = f"{slug_from_url(url)}.mp4"
+                lookup_key = expected_name.lower() if CASE_INSENSITIVE_FS else expected_name
+                if os.path.exists(os.path.join(VIDEOS_DIR, expected_name)) or lookup_key in txt_skip_names:
+                    print(f"[~] Skipping (already exists): {expected_name}")
+                    skipped += 1
+                    continue
+
+                try:
+                    ok, reason = _process_video_url(url, log)
+                    if ok:
+                        succeeded += 1
+                    else:
+                        failures.append((url, reason))
+                except Exception as e:
+                    failures.append((url, f"unexpected error: {e}"))
+
         failed = len(failures)
-        log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {skipped} skipped, {failed} failed")
+        elapsed = time.monotonic() - start_time
+        log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {skipped} skipped, {failed} failed — completed in {_format_elapsed(elapsed)}")
         for url, reason in failures:
             log.success(f"    [-] {url} — {reason}")
 
@@ -131,7 +154,8 @@ def main():
             fetch_segments(m3u8_url, cookies, req_headers, ts_path, log)
             if not convert_ts_to_mp4(ts_path, mp4_path, log):
                 sys.exit(1)
-            log.success(f"[+] Done: {mp4_path}")
+            elapsed = time.monotonic() - start_time
+            log.success(f"[+] Done: {mp4_path} — completed in {_format_elapsed(elapsed)}")
         finally:
             if os.path.exists(ts_path):
                 os.remove(ts_path)

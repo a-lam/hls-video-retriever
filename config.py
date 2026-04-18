@@ -5,6 +5,8 @@ TARGET_URL = "https://example.com/your-video-post/"
 # this page and process each one through the normal pipeline.
 LISTING_URL = ""
 
+MAX_LISTING_PAGES = 15
+
 VIDEOS_DIR = "videos"
 
 # Domains to skip when intercepting network requests (e.g. ad or tracker CDNs).
