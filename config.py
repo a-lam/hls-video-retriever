@@ -13,3 +13,10 @@ BLOCKED_DOMAINS = ()
 
 SEGMENT_THRESHOLD = 100
 FALLBACK_PLAYLIST = "index-f1-v1-a1"
+
+# Parallel segment download workers.
+DOWNLOAD_WORKERS = 6
+
+# Retry settings for individual segment fetches.
+SEGMENT_MAX_RETRIES = 3
+SEGMENT_RETRY_BACKOFF = 0.5  # base seconds; doubles each attempt (0.5s, 1s, 2s)

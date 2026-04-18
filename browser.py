@@ -7,7 +7,7 @@ from config import BLOCKED_DOMAINS, FALLBACK_PLAYLIST
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/124.0.0.0 Safari/537.36"
+    "Chrome/136.0.0.0 Safari/537.36"
 )
 PAGE_LOAD_TIMEOUT_MS = 60_000
 PLAYER_INIT_WAIT_MS = 6_000

@@ -1,23 +1,20 @@
-import urllib.request
+import requests
 
 
-def build_request(url, cookies, headers, method="GET"):
-    """Build a urllib Request using the provided headers and cookies."""
-    req = urllib.request.Request(url, method=method)
-    for key, value in headers.items():
-        req.add_header(key, value)
+def build_headers(cookies, headers):
+    """Merge captured browser headers and cookies into a plain dict for requests."""
+    merged = dict(headers)
     cookie_str = "; ".join(f"{c['name']}={c['value']}" for c in cookies if c.get("name"))
     if cookie_str:
-        req.add_header("Cookie", cookie_str)
-    return req
+        merged["Cookie"] = cookie_str
+    return merged
 
 
 def get_file_size(url, cookies, headers):
     """HEAD request → human-readable Content-Length, or None."""
     try:
-        req = build_request(url, cookies, headers, method="HEAD")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            length = resp.headers.get("Content-Length")
+        resp = requests.head(url, headers=build_headers(cookies, headers), timeout=10)
+        length = resp.headers.get("Content-Length")
         if length:
             size = int(length)
             if size >= 1_073_741_824:
@@ -33,8 +30,8 @@ def get_file_size(url, cookies, headers):
 def fetch_m3u8_content(url, cookies, headers):
     """GET a playlist URL and return the raw text body, or None on failure."""
     try:
-        req = build_request(url, cookies, headers)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.read().decode("utf-8", errors="replace")
+        resp = requests.get(url, headers=build_headers(cookies, headers), timeout=15)
+        resp.raise_for_status()
+        return resp.content.decode("utf-8", errors="replace")
     except Exception:
         return None
