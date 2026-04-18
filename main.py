@@ -56,6 +56,9 @@ def main():
     log = Logger()
 
     if LISTING_URL:
+        if not LISTING_URL.startswith(("http://", "https://")):
+            print(f"[-] LISTING_URL does not look like a valid URL: {LISTING_URL!r}")
+            sys.exit(1)
         video_urls = asyncio.run(extract_video_page_urls(LISTING_URL, log))
 
         if not video_urls:

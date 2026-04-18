@@ -29,7 +29,8 @@ class Logger:
     def finish_progress(self, total_bytes, out_path):
         """Replace the progress bar with a final completion line."""
         name = os.path.basename(out_path)
-        sys.stdout.write(f"\r  Downloaded   {name}  ({_fmt_bytes(total_bytes)}){' ' * 20}\n")
+        line = f"\r  Downloaded   {name}  ({_fmt_bytes(total_bytes)})"
+        sys.stdout.write(f"{line:<79}\n")
         sys.stdout.flush()
 
     def success(self, msg):
