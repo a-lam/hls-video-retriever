@@ -15,7 +15,7 @@ from config import TARGET_URL, LISTING_URL, VIDEOS_DIR, MAX_LISTING_PAGES
 from logger import Logger
 from browser import get_video_urls_and_cookies
 from candidates import select_candidate
-from file_utils import slug_from_url, unique_path
+from file_utils import slug_from_url, unique_path, append_to_filelist
 from downloader import fetch_segments
 from converter import convert_ts_to_mp4
 from extractor import extract_video_page_urls
@@ -49,7 +49,7 @@ def _process_video_url(url, log):
         if not convert_ts_to_mp4(ts_path, mp4_path, log):
             return False, "conversion error"
         log.success(f"[+] Done: {mp4_path}")
-        return True, None
+        return True, os.path.basename(mp4_path)
     except Exception as e:
         return False, f"download error: {e}"
     finally:
@@ -115,11 +115,12 @@ def main():
                     continue
 
                 try:
-                    ok, reason = _process_video_url(url, log)
+                    ok, result = _process_video_url(url, log)
                     if ok:
                         succeeded += 1
+                        append_to_filelist(VIDEOS_DIR, result)
                     else:
-                        failures.append((url, reason))
+                        failures.append((url, result))
                 except Exception as e:
                     failures.append((url, f"unexpected error: {e}"))
 
@@ -156,6 +157,7 @@ def main():
                 sys.exit(1)
             elapsed = time.monotonic() - start_time
             log.success(f"[+] Done: {mp4_path} — completed in {_format_elapsed(elapsed)}")
+            append_to_filelist(VIDEOS_DIR, os.path.basename(mp4_path))
         finally:
             if os.path.exists(ts_path):
                 os.remove(ts_path)

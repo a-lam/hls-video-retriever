@@ -18,3 +18,21 @@ def unique_path(folder, filename):
         path = os.path.join(folder, f"{base} ({counter}){ext}")
         counter += 1
     return path
+
+
+_FILELIST_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
+
+
+def append_to_filelist(folder, filename):
+    path = os.path.join(folder, "filelist.txt")
+    counter = 2
+    while True:
+        if not os.path.exists(path) or os.path.getsize(path) < _FILELIST_MAX_BYTES:
+            try:
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(filename + "\n")
+                return
+            except OSError:
+                pass  # file locked or unwritable — fall through to next candidate
+        path = os.path.join(folder, f"filelist({counter}).txt")
+        counter += 1
