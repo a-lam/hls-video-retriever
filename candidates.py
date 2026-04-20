@@ -5,7 +5,7 @@ from config import FALLBACK_PLAYLIST, SEGMENT_THRESHOLD
 from http_client import fetch_m3u8_content
 
 
-def parse_m3u8_streams(content, base_url=""):
+def parse_m3u8_streams(content: str, base_url: str = "") -> list[dict]:
     """
     Parse #EXT-X-STREAM-INF entries from master playlist text.
     Returns a list of {resolution, bandwidth, url} dicts.
@@ -37,7 +37,7 @@ def parse_m3u8_streams(content, base_url=""):
     return streams
 
 
-def count_segments(m3u8_content):
+def count_segments(m3u8_content: str) -> int:
     """Count the number of media segments (non-comment, non-empty lines) in a playlist."""
     return sum(
         1 for line in m3u8_content.splitlines()
@@ -45,7 +45,7 @@ def count_segments(m3u8_content):
     )
 
 
-def select_candidate(captured, log):
+def select_candidate(captured: list, log) -> tuple[str, dict] | None:
     """
     Choose the best m3u8 URL to download from the captured list.
 

@@ -3,13 +3,13 @@ import re
 from urllib.parse import unquote
 
 
-def slug_from_url(url):
+def slug_from_url(url: str) -> str:
     """Extract the last path segment from url and sanitise it for use as a filename."""
     segment = unquote(url.rstrip("/").split("/")[-1])
     return re.sub(r"[^\w\-]", "_", segment)[:60]
 
 
-def unique_path(folder, filename):
+def unique_path(folder: str, filename: str) -> str:
     """Return a path inside folder that doesn't exist, appending (1), (2), … as needed."""
     base, ext = os.path.splitext(filename)
     path = os.path.join(folder, filename)
@@ -23,7 +23,7 @@ def unique_path(folder, filename):
 _FILELIST_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
-def append_to_filelist(folder, filename):
+def append_to_filelist(folder: str, filename: str) -> None:
     path = os.path.join(folder, "filelist.txt")
     counter = 2
     while True:

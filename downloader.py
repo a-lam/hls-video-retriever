@@ -10,7 +10,7 @@ from http_client import build_headers, fetch_m3u8_content
 _session = requests.Session()
 
 
-def _fetch_segment_with_retry(seg_url, cookies, headers):
+def _fetch_segment_with_retry(seg_url: str, cookies: list, headers: dict) -> bytes | None:
     """Fetch a single segment, retrying up to SEGMENT_MAX_RETRIES times with
     exponential backoff.  Returns the raw bytes, or None on final failure."""
     hdrs = build_headers(cookies, headers)
@@ -25,7 +25,7 @@ def _fetch_segment_with_retry(seg_url, cookies, headers):
     return None
 
 
-def fetch_segments(m3u8_url, cookies, headers, ts_path, log):
+def fetch_segments(m3u8_url: str, cookies: list, headers: dict, ts_path: str, log) -> None:
     """
     Fetch all segments listed in the m3u8 playlist and concatenate them
     into the file at ts_path.  Segments are downloaded in parallel using a
@@ -50,6 +50,7 @@ def fetch_segments(m3u8_url, cookies, headers, ts_path, log):
 
     log.print(f"[*] Downloading {len(segments)} segments ({DOWNLOAD_WORKERS} workers)...")
     total_bytes = 0
+    failed_segments = 0
 
     with ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as pool:
         futures = [
@@ -64,7 +65,11 @@ def fetch_segments(m3u8_url, cookies, headers, ts_path, log):
                     out_file.write(data)
                     total_bytes += len(data)
                 else:
-                    log.print(f"[-] Segment {i + 1} failed after {SEGMENT_MAX_RETRIES} retries, skipping.")
+                    failed_segments += 1
+                    log.warning(f"[-] Segment {i + 1}/{len(segments)} failed after {SEGMENT_MAX_RETRIES} retries — skipping.")
                 log.progress(i + 1, len(segments), total_bytes)
 
     log.finish_progress(total_bytes, ts_path)
+
+    if failed_segments:
+        log.warning(f"[!] {failed_segments}/{len(segments)} segments failed — output may be degraded.")

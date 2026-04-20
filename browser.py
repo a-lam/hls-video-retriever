@@ -1,4 +1,5 @@
 import asyncio
+from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright
 
@@ -14,7 +15,7 @@ PLAYER_INIT_WAIT_MS = 6_000
 OVERLAY_DISMISS_TIMEOUT_MS = 500
 
 
-async def _close_overlays(page, log):
+async def _close_overlays(page, log) -> None:
     selectors = [
         "button[aria-label*='close' i]",
         "button[aria-label*='dismiss' i]",
@@ -36,7 +37,7 @@ async def _close_overlays(page, log):
             pass
 
 
-async def get_video_urls_and_cookies(target_url, log):
+async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
     """
     Launch a headless browser, navigate to target_url, intercept video requests,
     and return (captured, cookies).
@@ -80,7 +81,8 @@ async def get_video_urls_and_cookies(target_url, log):
             )
             if not is_video:
                 return
-            if any(domain in url for domain in BLOCKED_DOMAINS):
+            parsed_host = urlparse(url).hostname or ""
+            if any(parsed_host == d or parsed_host.endswith(f".{d}") for d in BLOCKED_DOMAINS):
                 log.print(f"[~] Blocked: {url}")
                 return
 
