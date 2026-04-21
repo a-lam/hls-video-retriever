@@ -39,10 +39,13 @@ def _process_video_url(url: str, log: Logger, output_dir: str = VIDEOS_DIR) -> t
         ts_path = tmp.name
 
     try:
-        fetch_segments(m3u8_url, cookies, req_headers, ts_path, log)
+        failed_segs, total_segs = fetch_segments(m3u8_url, cookies, req_headers, ts_path, log)
         if not convert_ts_to_mp4(ts_path, mp4_path, log):
             return False, "conversion error"
-        log.success(f"[+] Done: {mp4_path}")
+        done_msg = f"[+] {os.path.basename(mp4_path)} [COMPLETED]"
+        if failed_segs:
+            done_msg += f"  [{failed_segs}/{total_segs} segments failed]"
+        log.success(done_msg)
         return True, os.path.basename(mp4_path)
     except Exception as e:
         return False, f"download error: {e}"
@@ -113,7 +116,7 @@ def main() -> None:
                 expected_name = f"{slug_from_url(url)}.mp4"
                 lookup_key = expected_name.lower() if CASE_INSENSITIVE_FS else expected_name
                 if os.path.exists(os.path.join(effective_dir, expected_name)) or lookup_key in txt_skip_names:
-                    log.info(f"[~] Skipping (already exists): {expected_name}")
+                    log.info(f"[~] {expected_name} [SKIPPING - EXISTING]")
                     skipped += 1
                     continue
 
@@ -124,14 +127,16 @@ def main() -> None:
                         append_to_filelist(VIDEOS_DIR, result)
                     else:
                         failures.append((url, result))
+                        label = "CONVERSION ERROR" if result == "conversion error" else "DOWNLOAD INCOMPLETE"
+                        log.warning(f"[-] {slug_from_url(url)}.mp4 [FAILED - {label}]")
                 except Exception as e:
-                    failures.append((url, f"unexpected error: {e}"))
+                    reason = f"unexpected error: {e}"
+                    failures.append((url, reason))
+                    log.warning(f"[-] {slug_from_url(url)}.mp4 [FAILED - DOWNLOAD INCOMPLETE]")
 
         failed = len(failures)
         elapsed = time.monotonic() - start_time
         log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {skipped} skipped, {failed} failed — completed in {format_elapsed(elapsed)}")
-        for url, reason in failures:
-            log.success(f"    [-] {url} — {reason}")
 
     else:
         captured, cookies = asyncio.run(get_video_urls_and_cookies(TARGET_URL, log))
@@ -155,11 +160,13 @@ def main() -> None:
             ts_path = tmp.name
 
         try:
-            fetch_segments(m3u8_url, cookies, req_headers, ts_path, log)
+            failed_segs, total_segs = fetch_segments(m3u8_url, cookies, req_headers, ts_path, log)
             if not convert_ts_to_mp4(ts_path, mp4_path, log):
                 sys.exit(1)
-            elapsed = time.monotonic() - start_time
-            log.success(f"[+] Done: {mp4_path} — completed in {format_elapsed(elapsed)}")
+            done_msg = f"[+] {os.path.basename(mp4_path)} [COMPLETED]"
+            if failed_segs:
+                done_msg += f"  [{failed_segs}/{total_segs} segments failed]"
+            log.success(done_msg)
             append_to_filelist(VIDEOS_DIR, os.path.basename(mp4_path))
         finally:
             if os.path.exists(ts_path):

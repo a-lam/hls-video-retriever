@@ -25,17 +25,18 @@ def _fetch_segment_with_retry(seg_url: str, cookies: list, headers: dict) -> byt
     return None
 
 
-def fetch_segments(m3u8_url: str, cookies: list, headers: dict, ts_path: str, log) -> None:
+def fetch_segments(m3u8_url: str, cookies: list, headers: dict, ts_path: str, log) -> tuple[int, int]:
     """
     Fetch all segments listed in the m3u8 playlist and concatenate them
     into the file at ts_path.  Segments are downloaded in parallel using a
     thread pool and written to disk in the correct order.
+
+    Returns (failed_segments, total_segments).
     """
-    log.print(f"[*] Fetching playlist: {m3u8_url}")
     content = fetch_m3u8_content(m3u8_url, cookies, headers)
     if not content:
         log.print("[-] Failed to fetch m3u8 playlist.")
-        return
+        return 0, 0
 
     base_url = m3u8_url.rsplit("/", 1)[0] + "/"
     segments = [
@@ -46,7 +47,7 @@ def fetch_segments(m3u8_url: str, cookies: list, headers: dict, ts_path: str, lo
 
     if not segments:
         log.print("[-] No segments found in playlist.")
-        return
+        return 0, 0
 
     log.print(f"[*] Downloading {len(segments)} segments ({DOWNLOAD_WORKERS} workers)...")
     total_bytes = 0
@@ -69,7 +70,5 @@ def fetch_segments(m3u8_url: str, cookies: list, headers: dict, ts_path: str, lo
                     log.warning(f"[-] Segment {i + 1}/{len(segments)} failed after {SEGMENT_MAX_RETRIES} retries — skipping.")
                 log.progress(i + 1, len(segments), total_bytes)
 
-    log.finish_progress(total_bytes, ts_path)
-
-    if failed_segments:
-        log.warning(f"[!] {failed_segments}/{len(segments)} segments failed — output may be degraded.")
+    log.finish_progress()
+    return failed_segments, len(segments)

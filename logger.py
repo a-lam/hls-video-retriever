@@ -1,4 +1,3 @@
-import os
 import shutil
 import sys
 
@@ -42,12 +41,10 @@ class Logger:
         sys.stdout.write(f"{line:<{width}}")
         sys.stdout.flush()
 
-    def finish_progress(self, total_bytes: int, out_path: str) -> None:
-        """Replace the progress bar with a final completion line."""
+    def finish_progress(self) -> None:
+        """Clear the progress bar line so the next print starts clean."""
         width = shutil.get_terminal_size(fallback=(80, 24)).columns - 2
-        name = os.path.basename(out_path)
-        line = f"\r  Downloaded   {name}  ({_fmt_bytes(total_bytes)})"
-        sys.stdout.write(f"{line:<{width}}\n")
+        sys.stdout.write(f"\r{' ' * width}\r")
         sys.stdout.flush()
 
     def success(self, msg: str) -> None:

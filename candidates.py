@@ -63,7 +63,6 @@ def select_candidate(captured: list, log) -> tuple[str, dict] | None:
     # Strategy 1: exactly one master playlist
     if len(masters) == 1:
         master_url, master_hdrs = masters[0]
-        log.print(f"[*] Single master playlist found — fetching: {master_url}")
         content = fetch_m3u8_content(master_url, cookies=[], headers=master_hdrs)
         if content:
             base_url = master_url.rsplit("/", 1)[0] + "/"

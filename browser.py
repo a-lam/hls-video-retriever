@@ -32,7 +32,6 @@ async def _close_overlays(page, log) -> None:
             btn = page.locator(sel).first
             if await btn.is_visible(timeout=OVERLAY_DISMISS_TIMEOUT_MS):
                 await btn.click(timeout=OVERLAY_DISMISS_TIMEOUT_MS)
-                log.print(f"[*] Dismissed overlay: {sel}")
         except Exception:
             pass
 
