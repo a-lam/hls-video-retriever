@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 
@@ -31,7 +32,16 @@ def collect_video_filenames(root: str) -> list[str]:
 
 
 def main():
-    root = os.getcwd()
+    parser = argparse.ArgumentParser(description="List video files in a folder and write them to a text file.")
+    parser.add_argument("folder", nargs="?", default=None, help="Folder to scan (default: current directory)")
+    args = parser.parse_args()
+
+    root = args.folder if args.folder else os.getcwd()
+
+    if not os.path.isdir(root):
+        print(f"Error: '{root}' is not a directory.", file=sys.stderr)
+        sys.exit(1)
+
     print(f"Scanning: {root}")
 
     filenames = collect_video_filenames(root)
