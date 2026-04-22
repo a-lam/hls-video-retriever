@@ -1,7 +1,7 @@
 import re
 import urllib.parse
 
-from config import FALLBACK_PLAYLIST, SEGMENT_THRESHOLD
+from config import SEGMENT_THRESHOLD, STREAM_QUALITY
 from http_client import fetch_m3u8_content
 
 
@@ -37,6 +37,16 @@ def parse_m3u8_streams(content: str, base_url: str = "") -> list[dict]:
     return streams
 
 
+def pick_stream(streams: list[dict], quality: int) -> dict:
+    ranked = sorted(streams, key=lambda s: s["bandwidth"])
+    n = len(ranked)
+    if quality == 0:
+        return ranked[0]
+    if quality == 1:
+        return ranked[n // 2]   # middle, rounds up when n is even
+    return ranked[-1]           # quality == 2
+
+
 def count_segments(m3u8_content: str) -> int:
     """Count the number of media segments (non-comment, non-empty lines) in a playlist."""
     return sum(
@@ -49,46 +59,27 @@ def select_candidate(captured: list, log) -> tuple[str, dict] | None:
     """
     Choose the best m3u8 URL to download from the captured list.
 
-    Priority:
-      1. Exactly one master playlist → fetch it, return the highest-bandwidth sub-playlist.
-      2. First regular playlist with more than SEGMENT_THRESHOLD segments.
-      3. First regular playlist whose filename matches FALLBACK_PLAYLIST.
-      4. None — nothing suitable found.
+    For each master playlist: parse it, pick the STREAM_QUALITY-tier sub-playlist,
+    fetch it, and accept it only if it contains more than SEGMENT_THRESHOLD segments.
 
     Returns (url, req_headers) or None.
     """
     masters = [(url, hdrs) for (p, url, hdrs) in captured if p == 0]
-    regulars = [(url, hdrs) for (p, url, hdrs) in captured if p == 1]
 
-    # Strategy 1: exactly one master playlist
-    if len(masters) == 1:
-        master_url, master_hdrs = masters[0]
+    for master_url, master_hdrs in masters:
         content = fetch_m3u8_content(master_url, cookies=[], headers=master_hdrs)
-        if content:
-            base_url = master_url.rsplit("/", 1)[0] + "/"
-            streams = parse_m3u8_streams(content, base_url=base_url)
-            if streams:
-                best = max(streams, key=lambda s: s["bandwidth"])
-                log.print(f"[*] Selected sub-playlist ({best['bandwidth']} bps): {best['url']}")
-                return best["url"], master_hdrs
-        log.print("[-] Could not parse master playlist — falling through.")
+        if not content:
+            continue
+        base_url = master_url.rsplit("/", 1)[0] + "/"
+        streams = parse_m3u8_streams(content, base_url=base_url)
+        if not streams:
+            continue
+        best = pick_stream(streams, STREAM_QUALITY)
+        sub_content = fetch_m3u8_content(best["url"], cookies=[], headers=master_hdrs)
+        if sub_content and count_segments(sub_content) > SEGMENT_THRESHOLD:
+            log.print(f"[*] Selected sub-playlist ({best['bandwidth']} bps): {best['url']}")
+            return best["url"], master_hdrs
 
-    # Strategy 2: first regular playlist with enough segments
-    for url, hdrs in regulars:
-        content = fetch_m3u8_content(url, cookies=[], headers=hdrs)
-        if content:
-            n = count_segments(content)
-            if n > SEGMENT_THRESHOLD:
-                log.print(f"[*] Selected playlist with {n} segments: {url}")
-                return url, hdrs
-
-    # Strategy 3: filename stem (without extension) matches FALLBACK_PLAYLIST
-    for url, hdrs in regulars:
-        filename = url.split("/")[-1].split("?")[0]
-        stem = filename.rsplit(".", 1)[0] if "." in filename else filename
-        if stem == FALLBACK_PLAYLIST:
-            log.print(f"[*] Selected fallback playlist: {url}")
-            return url, hdrs
 
     log.print("[-] No suitable m3u8 candidate found.")
     return None

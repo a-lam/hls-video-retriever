@@ -16,6 +16,12 @@ BLOCKED_DOMAINS = ()
 SEGMENT_THRESHOLD = 100
 FALLBACK_PLAYLIST = "index-f1-v1-a1"
 
+# Quality tier when a master playlist offers multiple streams (sorted by bandwidth):
+#   0 = lowest bandwidth / smallest file
+#   1 = medium (middle stream; favours higher when stream count is even)
+#   2 = highest bandwidth / largest file (original behaviour)
+STREAM_QUALITY = 1
+
 # Parallel segment download workers.
 DOWNLOAD_WORKERS = 6
 
