@@ -110,4 +110,10 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
         await browser.close()
 
     captured.sort(key=lambda x: x[0])
-    return captured, cookies
+    seen_urls: set[str] = set()
+    deduped = []
+    for entry in captured:
+        if entry[1] not in seen_urls:
+            seen_urls.add(entry[1])
+            deduped.append(entry)
+    return deduped, cookies
