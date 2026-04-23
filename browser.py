@@ -54,11 +54,14 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
 
         def on_request(request):
             url = request.url
-            if ".m3u8" not in url or "master" not in url:
+            filename = urlparse(url).path.rsplit("/", 1)[-1]
+            if "master" not in filename:
                 return
             parsed_host = urlparse(url).hostname or ""
             if any(parsed_host == d or parsed_host.endswith(f".{d}") for d in BLOCKED_DOMAINS):
                 log.info(f"[~] Blocked: {url}")
+                return
+            if any(u == url for u, _ in captured):
                 return
             log.info(f"[+] Master playlist: {url}")
             captured.append((url, request.headers))
@@ -70,8 +73,9 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
 
         await _close_overlays(page, log)
 
-        log.info("[*] Waiting for video player to initialise...")
-        await page.wait_for_timeout(PLAYER_INIT_WAIT_MS)
+        if not captured:
+            log.info("[*] Waiting for video player to initialise...")
+            await page.wait_for_timeout(PLAYER_INIT_WAIT_MS)
 
         cookies = await context.cookies()
         await browser.close()

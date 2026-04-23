@@ -152,10 +152,12 @@ def _run_listing_mode(log: Logger, start_time: float) -> None:
                 else:
                     failures.append((url, result))
                     label = "CONVERSION ERROR" if result == "conversion error" else "DOWNLOAD INCOMPLETE"
+                    log.warning(f"[-] {result}")
                     log.warning(f"[-] {slug_from_url(url)}.mp4 [FAILED - {label}]")
             except Exception as e:
                 reason = f"unexpected error: {e}"
                 failures.append((url, reason))
+                log.warning(f"[-] {reason}")
                 log.warning(f"[-] {slug_from_url(url)}.mp4 [FAILED - DOWNLOAD INCOMPLETE]")
 
     failed = len(failures)
