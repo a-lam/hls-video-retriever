@@ -2,11 +2,13 @@ import os
 import re
 from urllib.parse import unquote
 
+from config import FILENAME_SLUG_MAX_LEN
+
 
 def slug_from_url(url: str) -> str:
     """Extract the last path segment from url and sanitise it for use as a filename."""
     segment = unquote(url.rstrip("/").split("/")[-1])
-    return re.sub(r"[^\w\-]", "_", segment)[:60]
+    return re.sub(r"[^A-Za-z0-9\-_]", "_", segment)[:FILENAME_SLUG_MAX_LEN]
 
 
 def unique_path(folder: str, filename: str) -> str:

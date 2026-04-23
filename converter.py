@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 
@@ -18,7 +19,13 @@ def convert_ts_to_mp4(ts_path: str, mp4_path: str, log) -> bool:
         text=True,
     )
     if result.returncode == 0:
-        log.print(f"[+] Conversion complete: {mp4_path}")
+        log.info(f"[+] Conversion complete: {mp4_path}")
         return True
-    log.print(f"[-] ffmpeg failed (exit {result.returncode}):\n{result.stderr}")
+
+    log.warning(f"[-] ffmpeg failed (exit {result.returncode}):\n{result.stderr[-2000:]}")
+    if os.path.exists(mp4_path):
+        try:
+            os.remove(mp4_path)
+        except OSError as e:
+            log.warning(f"[-] Could not remove partial output {mp4_path}: {e}")
     return False

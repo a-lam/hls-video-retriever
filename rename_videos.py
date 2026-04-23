@@ -3,15 +3,7 @@ import os
 import re
 import sys
 
-
-def unique_path(folder: str, filename: str) -> str:
-    base, ext = os.path.splitext(filename)
-    candidate = os.path.join(folder, filename)
-    counter = 1
-    while os.path.exists(candidate):
-        candidate = os.path.join(folder, f"{base} ({counter}){ext}")
-        counter += 1
-    return candidate
+from file_utils import unique_path
 
 
 def _find_date_index(parts: list) -> int | None:
@@ -89,6 +81,7 @@ def main():
     parser = argparse.ArgumentParser(description="Rename MP4 files in a folder to a readable format.")
     parser.add_argument("folder", nargs="?", default=None, help="Folder containing MP4 files (default: current directory)")
     parser.add_argument("--reverse", action="store_true", help="Reconstruct original filenames from renamed files")
+    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompt (for non-interactive use)")
     args = parser.parse_args()
 
     folder = args.folder if args.folder else os.getcwd()
@@ -132,11 +125,15 @@ def main():
     if not renames:
         return
 
-    print("\nDo you want to proceed with renaming these files? [Y/n] ", end="", flush=True)
-    confirmation = input().strip()
-    if confirmation != "Y":
-        print("Did not receive user confirmation. Aborting.")
-        return
+    if not args.yes:
+        if not sys.stdout.isatty():
+            print("Non-interactive mode: use --yes to confirm. Aborting.", file=sys.stderr)
+            sys.exit(1)
+        print("\nDo you want to proceed with renaming these files? [Y/n] ", end="", flush=True)
+        confirmation = input().strip()
+        if confirmation != "Y":
+            print("Did not receive user confirmation. Aborting.")
+            return
 
     for filename, new_name in renames:
         target = unique_path(folder, new_name)

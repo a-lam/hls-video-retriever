@@ -3,37 +3,25 @@ from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright
 
-from config import BLOCKED_DOMAINS, FALLBACK_PLAYLIST
-
-BROWSER_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/136.0.0.0 Safari/537.36"
+from config import (
+    BLOCKED_DOMAINS,
+    BROWSER_USER_AGENT,
+    OVERLAY_DISMISS_SELECTORS,
+    OVERLAY_DISMISS_TIMEOUT_MS,
+    PAGE_LOAD_TIMEOUT_MS,
+    PLAYER_INIT_WAIT_MS,
+    VIDEO_STEM_FALLBACK,
 )
-PAGE_LOAD_TIMEOUT_MS = 60_000
-PLAYER_INIT_WAIT_MS = 6_000
-OVERLAY_DISMISS_TIMEOUT_MS = 500
 
 
 async def _close_overlays(page, log) -> None:
-    selectors = [
-        "button[aria-label*='close' i]",
-        "button[aria-label*='dismiss' i]",
-        "[class*='close' i][role='button']",
-        "[class*='popup' i] [class*='close' i]",
-        "[class*='modal' i] [class*='close' i]",
-        "[class*='overlay' i] [class*='close' i]",
-        "button[class*='accept' i]",
-        "button[id*='accept' i]",
-        ".cc-btn.cc-dismiss",
-    ]
-    for sel in selectors:
+    for sel in OVERLAY_DISMISS_SELECTORS:
         try:
             btn = page.locator(sel).first
             if await btn.is_visible(timeout=OVERLAY_DISMISS_TIMEOUT_MS):
                 await btn.click(timeout=OVERLAY_DISMISS_TIMEOUT_MS)
         except Exception:
-            pass
+            pass  # selector not present or timed out — expected, not an error
 
 
 async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
@@ -73,7 +61,7 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
             filename = url.split("/")[-1].split("?")[0]
             stem = filename.rsplit(".", 1)[0] if "." in filename else filename
             is_m3u8 = ".m3u8" in url
-            is_playlist_stem = stem == FALLBACK_PLAYLIST
+            is_playlist_stem = stem == VIDEO_STEM_FALLBACK
             is_video = is_m3u8 or is_playlist_stem or (
                 ".mp4" in url
                 and not any(s in url for s in ("thumbnail", "thumb", "preview", "poster"))
@@ -82,28 +70,28 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
                 return
             parsed_host = urlparse(url).hostname or ""
             if any(parsed_host == d or parsed_host.endswith(f".{d}") for d in BLOCKED_DOMAINS):
-                log.print(f"[~] Blocked: {url}")
+                log.info(f"[~] Blocked: {url}")
                 return
 
             req_headers = request.headers
             if is_m3u8 and "master" in url:
-                log.print(f"[+] Master playlist: {url}")
+                log.info(f"[+] Master playlist: {url}")
                 captured.append((0, url, req_headers))
             elif is_m3u8 or is_playlist_stem:
-                log.print(f"[+] Playlist: {url}")
+                log.info(f"[+] Playlist: {url}")
                 captured.append((1, url, req_headers))
             else:
-                log.print(f"[+] Direct mp4: {url}")
+                log.info(f"[+] Direct mp4: {url}")
                 captured.append((2, url, req_headers))
 
         page.on("request", on_request)
 
-        log.print(f"[*] Loading page: {target_url}")
+        log.info(f"[*] Loading page: {target_url}")
         await page.goto(target_url, wait_until="load", timeout=PAGE_LOAD_TIMEOUT_MS)
 
         await _close_overlays(page, log)
 
-        log.print("[*] Waiting for video player to initialise...")
+        log.info("[*] Waiting for video player to initialise...")
         await page.wait_for_timeout(PLAYER_INIT_WAIT_MS)
 
         cookies = await context.cookies()

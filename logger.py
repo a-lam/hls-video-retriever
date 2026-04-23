@@ -2,7 +2,7 @@ import shutil
 import sys
 
 
-def _fmt_bytes(n: int) -> str:
+def fmt_bytes(n: int) -> str:
     if n >= 1_073_741_824:
         return f"{n / 1_073_741_824:.2f} GB"
     if n >= 1_048_576:
@@ -17,27 +17,23 @@ def format_elapsed(seconds: float) -> str:
 
 
 class Logger:
-    """Logging helper. Only progress and success output reach the console."""
+    """Logging helper. All output goes to stdout."""
 
-    def print(self, *args, **kwargs) -> None:
-        pass  # silent — retained for callers
+    BAR_WIDTH = 30
 
     def info(self, msg: str) -> None:
-        """Informational output — always shown."""
         print(msg)
 
     def warning(self, msg: str) -> None:
-        """Warning output — always shown."""
         print(msg)
 
     def progress(self, current: int, total: int, total_bytes: int) -> None:
         """Update an inline progress bar."""
         width = shutil.get_terminal_size(fallback=(80, 24)).columns - 2
-        bar_width = 30
-        filled = int(bar_width * current / total) if total else 0
-        arrow = ">" if filled < bar_width else ""
-        bar = "=" * filled + arrow + " " * (bar_width - filled - len(arrow))
-        line = f"\r  Downloading  [{bar}] {current}/{total}  {_fmt_bytes(total_bytes)}"
+        filled = int(self.BAR_WIDTH * current / total) if total else 0
+        arrow = ">" if filled < self.BAR_WIDTH else ""
+        bar = "=" * filled + arrow + " " * (self.BAR_WIDTH - filled - len(arrow))
+        line = f"\r  Downloading  [{bar}] {current}/{total}  {fmt_bytes(total_bytes)}"
         sys.stdout.write(f"{line:<{width}}")
         sys.stdout.flush()
 
@@ -48,5 +44,4 @@ class Logger:
         sys.stdout.flush()
 
     def success(self, msg: str) -> None:
-        """Write a line to stdout — for final per-video and summary messages."""
         print(msg)

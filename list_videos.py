@@ -2,13 +2,8 @@ import argparse
 import os
 import sys
 
+from config import VIDEO_EXTENSIONS
 from rename_videos import parse_reversed_filename, build_original_name
-
-VIDEO_EXTENSIONS = {
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
-    ".m4v", ".mpg", ".mpeg", ".ts", ".m2ts", ".mts", ".vob",
-    ".3gp", ".3g2", ".ogv", ".rm", ".rmvb", ".divx", ".xvid",
-}
 
 
 def find_output_path(folder: str) -> str:
@@ -65,6 +60,22 @@ def list_dir(folder: str) -> str | None:
     return output_path
 
 
+def list_root_videos(root: str) -> str | None:
+    """Write a filelist.txt for video files sitting directly in root (non-recursive). Returns output path or None."""
+    root_videos = sorted(
+        f for f in os.listdir(root)
+        if os.path.isfile(os.path.join(root, f))
+        and os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
+    )
+    if not root_videos:
+        return None
+    out = find_output_path(root)
+    with open(out, "w", encoding="utf-8") as fh:
+        for name in root_videos:
+            fh.write(_normalize_to_original(name) + "\n")
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser(description="List video files in a folder and write them to a text file.")
     parser.add_argument("folder", nargs="?", default=None, help="Folder to scan (default: current directory)")
@@ -93,16 +104,8 @@ def main():
             else:
                 print(f"No videos found in: {folder}")
 
-        root_videos = sorted(
-            f for f in os.listdir(root)
-            if os.path.isfile(os.path.join(root, f))
-            and os.path.splitext(f)[1].lower() in VIDEO_EXTENSIONS
-        )
-        if root_videos:
-            out = find_output_path(root)
-            with open(out, "w", encoding="utf-8") as fh:
-                for name in root_videos:
-                    fh.write(_normalize_to_original(name) + "\n")
+        out = list_root_videos(root)
+        if out:
             print(f"Written to: {out}")
             any_output = True
 

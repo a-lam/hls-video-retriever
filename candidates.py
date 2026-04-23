@@ -38,6 +38,10 @@ def parse_m3u8_streams(content: str, base_url: str = "") -> list[dict]:
 
 
 def pick_stream(streams: list[dict], quality: int) -> dict:
+    if quality not in (0, 1, 2):
+        raise ValueError(f"quality must be 0, 1, or 2; got {quality!r}")
+    if not streams:
+        raise ValueError("pick_stream called with an empty stream list")
     ranked = sorted(streams, key=lambda s: s["bandwidth"])
     n = len(ranked)
     if quality == 0:
@@ -67,19 +71,29 @@ def select_candidate(captured: list, log) -> tuple[str, dict] | None:
     masters = [(url, hdrs) for (p, url, hdrs) in captured if p == 0]
 
     for master_url, master_hdrs in masters:
-        content = fetch_m3u8_content(master_url, cookies=[], headers=master_hdrs)
+        content = fetch_m3u8_content(master_url, cookies=[], headers=master_hdrs, log=log)
         if not content:
+            log.warning(f"[-] Failed to fetch master playlist: {master_url}")
             continue
         base_url = master_url.rsplit("/", 1)[0] + "/"
         streams = parse_m3u8_streams(content, base_url=base_url)
         if not streams:
+            log.warning(f"[-] No streams found in master playlist: {master_url}")
             continue
         best = pick_stream(streams, STREAM_QUALITY)
-        sub_content = fetch_m3u8_content(best["url"], cookies=[], headers=master_hdrs)
-        if sub_content and count_segments(sub_content) > SEGMENT_THRESHOLD:
-            log.print(f"[*] Selected sub-playlist ({best['bandwidth']} bps): {best['url']}")
-            return best["url"], master_hdrs
+        sub_content = fetch_m3u8_content(best["url"], cookies=[], headers=master_hdrs, log=log)
+        if not sub_content:
+            log.warning(f"[-] Failed to fetch sub-playlist: {best['url']}")
+            continue
+        seg_count = count_segments(sub_content)
+        if seg_count <= SEGMENT_THRESHOLD:
+            log.warning(
+                f"[-] Sub-playlist has only {seg_count} segments "
+                f"(threshold: {SEGMENT_THRESHOLD}) — skipping: {best['url']}"
+            )
+            continue
+        log.info(f"[*] Selected sub-playlist ({best['bandwidth']} bps): {best['url']}")
+        return best["url"], master_hdrs
 
-
-    log.print("[-] No suitable m3u8 candidate found.")
+    log.warning("[-] No suitable m3u8 candidate found.")
     return None
