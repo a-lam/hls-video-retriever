@@ -5,11 +5,11 @@ import sys
 import tempfile
 import time
 
-from config import TARGET_URL, LISTING_URL, VIDEOS_DIR, MAX_LISTING_PAGES
+from config import TARGET_URL, LISTING_URL, VIDEOS_DIR, FILELIST_DIR, MAX_LISTING_PAGES
 from logger import Logger, format_elapsed
 from browser import get_video_urls_and_cookies
 from candidates import select_candidate
-from file_utils import slug_from_url, unique_path, append_to_filelist
+from file_utils import slug_from_url, unique_path
 from downloader import fetch_segments
 from converter import convert_ts_to_mp4
 from extractor import extract_video_page_urls
@@ -76,19 +76,16 @@ def main() -> None:
             log.info(f"[*] Actor detected — saving to: {effective_dir}")
 
         txt_skip_names: set[str] = set()
-        dirs_to_scan = [VIDEOS_DIR]
-        if effective_dir != VIDEOS_DIR:
-            dirs_to_scan.append(effective_dir)
-        for scan_dir in dirs_to_scan:
-            if os.path.isdir(scan_dir):
-                for fname in os.listdir(scan_dir):
-                    if fname.lower().endswith(".txt"):
-                        txt_path = os.path.join(scan_dir, fname)
-                        with open(txt_path, encoding="utf-8", errors="ignore") as fh:
-                            for line in fh:
-                                name = line.strip()
-                                if name:
-                                    txt_skip_names.add(name.lower() if CASE_INSENSITIVE_FS else name)
+        filelist_dir = os.path.join(VIDEOS_DIR, FILELIST_DIR)
+        if os.path.isdir(filelist_dir):
+            for fname in os.listdir(filelist_dir):
+                if fname.lower().endswith(".txt"):
+                    txt_path = os.path.join(filelist_dir, fname)
+                    with open(txt_path, encoding="utf-8", errors="ignore") as fh:
+                        for line in fh:
+                            name = line.strip()
+                            if name:
+                                txt_skip_names.add(name.lower() if CASE_INSENSITIVE_FS else name)
 
         if txt_skip_names:
             log.info(f"[*] Loaded {len(txt_skip_names)} entries from skip list")
@@ -124,7 +121,6 @@ def main() -> None:
                     ok, result = _process_video_url(url, log, output_dir=effective_dir)
                     if ok:
                         succeeded += 1
-                        append_to_filelist(VIDEOS_DIR, result)
                     else:
                         failures.append((url, result))
                         label = "CONVERSION ERROR" if result == "conversion error" else "DOWNLOAD INCOMPLETE"
@@ -139,12 +135,18 @@ def main() -> None:
         log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {skipped} skipped, {failed} failed — completed in {format_elapsed(elapsed)}")
 
         if m_actor:
+            import shutil
             from list_videos import list_dir
             from rename_videos import rename_files
 
             out = list_dir(effective_dir)
             if out:
                 log.info(f"[*] Video list written to: {out}")
+                dest_dir = os.path.join(VIDEOS_DIR, FILELIST_DIR)
+                os.makedirs(dest_dir, exist_ok=True)
+                dest = os.path.join(dest_dir, os.path.basename(out))
+                shutil.copy2(out, dest)
+                log.info(f"[*] Copied listing to: {dest}")
             else:
                 log.info(f"[*] No videos found in {effective_dir} — skipped list step")
 
@@ -180,7 +182,6 @@ def main() -> None:
             if failed_segs:
                 done_msg += f"  [{failed_segs}/{total_segs} segments failed]"
             log.success(done_msg)
-            append_to_filelist(VIDEOS_DIR, os.path.basename(mp4_path))
         finally:
             if os.path.exists(ts_path):
                 os.remove(ts_path)

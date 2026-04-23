@@ -8,6 +8,7 @@ LISTING_URL = ""
 MAX_LISTING_PAGES = 15
 
 VIDEOS_DIR = "videos"
+FILELIST_DIR = "_filelist"
 
 # Domains to skip when intercepting network requests (e.g. ad or tracker CDNs).
 # Add any CDN hostnames here that serve ads/tracking rather than the main video.
