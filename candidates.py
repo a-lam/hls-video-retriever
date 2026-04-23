@@ -1,7 +1,7 @@
 import re
 import urllib.parse
 
-from config import SEGMENT_THRESHOLD, STREAM_QUALITY
+from config import STREAM_QUALITY
 from http_client import fetch_m3u8_content
 
 
@@ -51,26 +51,15 @@ def pick_stream(streams: list[dict], quality: int) -> dict:
     return ranked[-1]           # quality == 2
 
 
-def count_segments(m3u8_content: str) -> int:
-    """Count the number of media segments (non-comment, non-empty lines) in a playlist."""
-    return sum(
-        1 for line in m3u8_content.splitlines()
-        if line.strip() and not line.startswith("#")
-    )
-
-
 def select_candidate(captured: list, log) -> tuple[str, dict] | None:
     """
     Choose the best m3u8 URL to download from the captured list.
 
-    For each master playlist: parse it, pick the STREAM_QUALITY-tier sub-playlist,
-    fetch it, and accept it only if it contains more than SEGMENT_THRESHOLD segments.
+    For each master playlist: parse it and pick the STREAM_QUALITY-tier sub-playlist.
 
     Returns (url, req_headers) or None.
     """
-    masters = [(url, hdrs) for (p, url, hdrs) in captured if p == 0]
-
-    for master_url, master_hdrs in masters:
+    for master_url, master_hdrs in captured:
         content = fetch_m3u8_content(master_url, cookies=[], headers=master_hdrs, log=log)
         if not content:
             log.warning(f"[-] Failed to fetch master playlist: {master_url}")
@@ -81,17 +70,6 @@ def select_candidate(captured: list, log) -> tuple[str, dict] | None:
             log.warning(f"[-] No streams found in master playlist: {master_url}")
             continue
         best = pick_stream(streams, STREAM_QUALITY)
-        sub_content = fetch_m3u8_content(best["url"], cookies=[], headers=master_hdrs, log=log)
-        if not sub_content:
-            log.warning(f"[-] Failed to fetch sub-playlist: {best['url']}")
-            continue
-        seg_count = count_segments(sub_content)
-        if seg_count <= SEGMENT_THRESHOLD:
-            log.warning(
-                f"[-] Sub-playlist has only {seg_count} segments "
-                f"(threshold: {SEGMENT_THRESHOLD}) — skipping: {best['url']}"
-            )
-            continue
         log.info(f"[*] Selected sub-playlist ({best['bandwidth']} bps): {best['url']}")
         return best["url"], master_hdrs
 

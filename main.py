@@ -184,8 +184,6 @@ def _run_listing_mode(log: Logger, start_time: float) -> None:
 def _validate_config() -> None:
     if config.STREAM_QUALITY not in (0, 1, 2):
         raise ValueError(f"STREAM_QUALITY must be 0, 1, or 2; got {config.STREAM_QUALITY!r}")
-    if config.SEGMENT_THRESHOLD < 0:
-        raise ValueError(f"SEGMENT_THRESHOLD must be non-negative; got {config.SEGMENT_THRESHOLD!r}")
     if config.MAX_LISTING_PAGES < 1:
         raise ValueError(f"MAX_LISTING_PAGES must be >= 1; got {config.MAX_LISTING_PAGES!r}")
     if config.DOWNLOAD_WORKERS < 1:

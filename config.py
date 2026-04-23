@@ -24,10 +24,6 @@ LISTING_PAGE_SELECTOR = ".site-main > div > article a"
 # as the directory name). Set to "" to save all downloads flat into VIDEOS_DIR.
 LISTING_SUBDIR_PATTERN = r"/actor/([^/]+)/"
 
-# Filename stem (without extension) used as a fallback to detect playlists
-# when the URL lacks a .m3u8 extension. Adjust to match your video host.
-VIDEO_STEM_FALLBACK = "index-f1-v1-a1"
-
 # Domains to skip when intercepting network requests (e.g. ad or tracker CDNs).
 # Add any CDN hostnames here that serve ads/tracking rather than the main video.
 BLOCKED_DOMAINS: tuple[str, ...] = ()
@@ -85,9 +81,6 @@ SEGMENT_FETCH_TIMEOUT_S    = 30      # seconds — individual segment download
 
 # Stop paginating after this many listing pages.
 MAX_LISTING_PAGES = 15
-
-# A sub-playlist must contain more than this many segments to be considered valid.
-SEGMENT_THRESHOLD = 100
 
 # Max characters kept from the URL slug when building an output filename.
 FILENAME_SLUG_MAX_LEN = 60

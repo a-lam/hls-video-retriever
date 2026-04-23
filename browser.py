@@ -10,7 +10,6 @@ from config import (
     OVERLAY_DISMISS_TIMEOUT_MS,
     PAGE_LOAD_TIMEOUT_MS,
     PLAYER_INIT_WAIT_MS,
-    VIDEO_STEM_FALLBACK,
 )
 
 
@@ -29,10 +28,7 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
     Launch a headless browser, navigate to target_url, intercept video requests,
     and return (captured, cookies).
 
-    Each entry in captured is a (priority, url, req_headers) tuple:
-      0 = master m3u8 playlist
-      1 = regular m3u8 playlist
-      2 = direct mp4
+    Each entry in captured is a (url, req_headers) tuple for a master m3u8 playlist.
     """
     captured = []
 
@@ -58,31 +54,14 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
 
         def on_request(request):
             url = request.url
-            filename = url.split("/")[-1].split("?")[0]
-            stem = filename.rsplit(".", 1)[0] if "." in filename else filename
-            is_m3u8 = ".m3u8" in url
-            is_playlist_stem = stem == VIDEO_STEM_FALLBACK
-            is_video = is_m3u8 or is_playlist_stem or (
-                ".mp4" in url
-                and not any(s in url for s in ("thumbnail", "thumb", "preview", "poster"))
-            )
-            if not is_video:
+            if ".m3u8" not in url or "master" not in url:
                 return
             parsed_host = urlparse(url).hostname or ""
             if any(parsed_host == d or parsed_host.endswith(f".{d}") for d in BLOCKED_DOMAINS):
                 log.info(f"[~] Blocked: {url}")
                 return
-
-            req_headers = request.headers
-            if is_m3u8 and "master" in url:
-                log.info(f"[+] Master playlist: {url}")
-                captured.append((0, url, req_headers))
-            elif is_m3u8 or is_playlist_stem:
-                log.info(f"[+] Playlist: {url}")
-                captured.append((1, url, req_headers))
-            else:
-                log.info(f"[+] Direct mp4: {url}")
-                captured.append((2, url, req_headers))
+            log.info(f"[+] Master playlist: {url}")
+            captured.append((url, request.headers))
 
         page.on("request", on_request)
 
@@ -97,11 +76,10 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
         cookies = await context.cookies()
         await browser.close()
 
-    captured.sort(key=lambda x: x[0])
     seen_urls: set[str] = set()
     deduped = []
     for entry in captured:
-        if entry[1] not in seen_urls:
-            seen_urls.add(entry[1])
+        if entry[0] not in seen_urls:
+            seen_urls.add(entry[0])
             deduped.append(entry)
     return deduped, cookies
