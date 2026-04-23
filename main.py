@@ -138,6 +138,19 @@ def main() -> None:
         elapsed = time.monotonic() - start_time
         log.success(f"\n[+] Summary: {total} found, {succeeded} succeeded, {skipped} skipped, {failed} failed — completed in {format_elapsed(elapsed)}")
 
+        if m_actor:
+            from list_videos import list_dir
+            from rename_videos import rename_files
+
+            out = list_dir(effective_dir)
+            if out:
+                log.info(f"[*] Video list written to: {out}")
+            else:
+                log.info(f"[*] No videos found in {effective_dir} — skipped list step")
+
+            renamed, skipped_renames = rename_files(effective_dir)
+            log.info(f"[*] Rename complete: {renamed} renamed, {skipped_renames} skipped")
+
     else:
         captured, cookies = asyncio.run(get_video_urls_and_cookies(TARGET_URL, log))
 

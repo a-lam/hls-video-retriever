@@ -64,6 +64,27 @@ def build_original_name(code: str, name: str, date: str, other) -> str:
     return f"{code}_{name}_{date}.mp4"
 
 
+def rename_files(folder: str, reverse: bool = False) -> tuple[int, int]:
+    """Rename MP4 files in folder without prompting. Returns (renamed_count, skipped_count)."""
+    mp4_files = sorted(f for f in os.listdir(folder) if f.lower().endswith(".mp4"))
+    parse_fn = parse_reversed_filename if reverse else parse_filename
+    build_fn = build_original_name if reverse else build_new_name
+    renames, skipped = [], 0
+    for filename in mp4_files:
+        parsed = parse_fn(filename)
+        if parsed is None:
+            skipped += 1
+            continue
+        code, name, date, other = parsed
+        new_name = build_fn(code, name, date, other)
+        if new_name != filename:
+            renames.append((filename, new_name))
+    for filename, new_name in renames:
+        target = unique_path(folder, new_name)
+        os.rename(os.path.join(folder, filename), target)
+    return len(renames), skipped
+
+
 def main():
     parser = argparse.ArgumentParser(description="Rename MP4 files in a folder to a readable format.")
     parser.add_argument("folder", nargs="?", default=None, help="Folder containing MP4 files (default: current directory)")
@@ -82,12 +103,11 @@ def main():
         print("No MP4 files found.")
         return
 
-    renames = []
-    skips = []
-
     parse_fn = parse_reversed_filename if args.reverse else parse_filename
     build_fn = build_original_name if args.reverse else build_new_name
 
+    renames = []
+    skips = []
     for filename in mp4_files:
         parsed = parse_fn(filename)
         if parsed is None:
