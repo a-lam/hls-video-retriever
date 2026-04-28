@@ -1,4 +1,5 @@
 import asyncio
+from fnmatch import fnmatch
 from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright
@@ -6,6 +7,7 @@ from playwright.async_api import async_playwright
 from config import (
     BLOCKED_DOMAINS,
     BROWSER_USER_AGENT,
+    MASTER_PLAYLIST_PATTERNS,
     OVERLAY_DISMISS_SELECTORS,
     OVERLAY_DISMISS_TIMEOUT_MS,
     PAGE_LOAD_TIMEOUT_MS,
@@ -55,7 +57,7 @@ async def get_video_urls_and_cookies(target_url: str, log) -> tuple[list, list]:
         def on_request(request):
             url = request.url
             filename = urlparse(url).path.rsplit("/", 1)[-1]
-            if "master" not in filename:
+            if not any(fnmatch(filename.lower(), p) for p in MASTER_PLAYLIST_PATTERNS):
                 return
             parsed_host = urlparse(url).hostname or ""
             if any(parsed_host == d or parsed_host.endswith(f".{d}") for d in BLOCKED_DOMAINS):

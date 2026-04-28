@@ -28,6 +28,11 @@ LISTING_SUBDIR_PATTERN = r"/actor/([^/]+)/"
 # Add any CDN hostnames here that serve ads/tracking rather than the main video.
 BLOCKED_DOMAINS: tuple[str, ...] = ()
 
+# Glob patterns matched against the filename portion of each intercepted request URL.
+# A request is captured as a master playlist if ANY pattern matches (case-insensitive).
+# Use lowercase patterns. Examples: "*master*", "index.*", "*.m3u8"
+MASTER_PLAYLIST_PATTERNS: tuple[str, ...] = ("master*",)
+
 # CSS selectors tried in order to close popups/cookie banners.
 # Edit this list to match your target site. Order matters — first visible match is clicked.
 OVERLAY_DISMISS_SELECTORS: list[str] = [
