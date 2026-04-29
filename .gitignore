@@ -3,6 +3,7 @@ videos/
 *.mp4
 *.ts
 *.log
+site-profiles/*
 
 # Python cache
 __pycache__/

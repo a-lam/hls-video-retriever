@@ -11,7 +11,8 @@ def _root_domain(hostname: str) -> str:
 
 
 def _load_profile(name: str) -> dict | None:
-    path = pathlib.Path(__file__).parent / "site-profiles" / f"{name}.py"
+    root = pathlib.Path(__file__).parent
+    path = (root / f"{name}.py") if name == "default" else (root / "site-profiles" / f"{name}.py")
     if not path.exists():
         return None
     spec = importlib.util.spec_from_file_location(name, path)
@@ -27,7 +28,7 @@ if config.URL:
     if _profile is None:
         raise ValueError(
             f"No site profile found for {_hostname!r} and no default.py fallback. "
-            f"Add site-profiles/{_file_stem}.py or site-profiles/default.py."
+            f"Add site-profiles/{_file_stem}.py or default.py."
         )
     config.__dict__.update(_profile)
     config.IS_LISTING_MODE = bool(_profile.get("LISTING_PAGE_SELECTOR", ""))
