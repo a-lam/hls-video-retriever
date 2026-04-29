@@ -6,13 +6,15 @@ import sys
 import tempfile
 import time
 
+import loader  # must precede from-config imports — patches config with site profile
 import config
 from config import (
+    DOWNLOAD_MODE,
     FILELIST_DIR,
+    IS_LISTING_MODE,
     LISTING_SUBDIR_PATTERN,
-    LISTING_URL,
     MAX_LISTING_PAGES,
-    TARGET_URL,
+    URL,
     VIDEOS_DIR,
 )
 from browser import get_video_urls_and_cookies
@@ -93,19 +95,19 @@ def _process_video_url(url: str, log: Logger, output_dir: str = VIDEOS_DIR) -> t
 
 
 def _run_single_mode(log: Logger) -> None:
-    ok, result = _process_video_url(TARGET_URL, log)
+    ok, result = _process_video_url(URL, log)
     if not ok:
         log.warning(f"[-] {result}")
         sys.exit(1)
 
 
 def _run_listing_mode(log: Logger, start_time: float) -> None:
-    if not LISTING_URL.startswith(("http://", "https://")):
-        log.warning(f"[-] LISTING_URL does not look like a valid URL: {LISTING_URL!r}")
+    if not URL.startswith(("http://", "https://")):
+        log.warning(f"[-] URL does not look like a valid URL: {URL!r}")
         sys.exit(1)
 
-    base_url = re.sub(r'/page/\d+/?$', '', LISTING_URL.rstrip('/')) + '/'
-    m = re.search(r'/page/(\d+)/?$', LISTING_URL)
+    base_url = re.sub(r'/page/\d+/?$', '', URL.rstrip('/')) + '/'
+    m = re.search(r'/page/(\d+)/?$', URL)
     start_page = int(m.group(1)) if m else 1
 
     subdir = _extract_subdir(base_url)
@@ -122,6 +124,7 @@ def _run_listing_mode(log: Logger, start_time: float) -> None:
     skipped = 0
     failures = []
     total = 0
+    done = False
 
     for i in range(MAX_LISTING_PAGES):
         page_num = start_page + i
@@ -149,6 +152,9 @@ def _run_listing_mode(log: Logger, start_time: float) -> None:
                 ok, result = _process_video_url(url, log, output_dir=effective_dir)
                 if ok:
                     succeeded += 1
+                    if DOWNLOAD_MODE == "first":
+                        done = True
+                        break
                 else:
                     failures.append((url, result))
                     label = "CONVERSION ERROR" if result == "conversion error" else "DOWNLOAD INCOMPLETE"
@@ -159,6 +165,9 @@ def _run_listing_mode(log: Logger, start_time: float) -> None:
                 failures.append((url, reason))
                 log.warning(f"[-] {reason}")
                 log.warning(f"[-] {slug_from_url(url)}.mp4 [FAILED - DOWNLOAD INCOMPLETE]")
+
+        if done:
+            break
 
     failed = len(failures)
     elapsed = time.monotonic() - start_time
@@ -198,7 +207,7 @@ def main() -> None:
     _validate_config()
     log = Logger()
     start_time = time.monotonic()
-    if LISTING_URL:
+    if IS_LISTING_MODE:
         _run_listing_mode(log, start_time)
     else:
         _run_single_mode(log)

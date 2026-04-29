@@ -2,7 +2,7 @@ import urllib.parse
 
 from playwright.async_api import async_playwright
 
-from config import BROWSER_USER_AGENT, LISTING_PAGE_SELECTOR, PAGE_LOAD_TIMEOUT_MS
+from config import BROWSER_USER_AGENT, LISTING_PAGE_SELECTOR, LISTING_URL_ATTR, PAGE_LOAD_TIMEOUT_MS
 
 
 async def extract_video_page_urls(listing_url: str, log) -> list[str]:
@@ -34,10 +34,10 @@ async def extract_video_page_urls(listing_url: str, log) -> list[str]:
             )
 
         for el in elements:
-            href = await el.get_attribute("href")
-            if not href:
+            raw = await el.get_attribute(LISTING_URL_ATTR)
+            if not raw:
                 continue
-            resolved = urllib.parse.urljoin(listing_url, href)
+            resolved = urllib.parse.urljoin(listing_url, raw)
             if resolved not in seen:
                 seen.add(resolved)
                 urls.append(resolved)

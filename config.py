@@ -1,57 +1,25 @@
 # =============================================================================
-# RUN TARGETS — edit these before each run
+# RUN TARGETS — edit before each run
 # =============================================================================
 
-# Single-video mode: URL of the page containing the HLS video player.
-# Used when LISTING_URL is empty.
-TARGET_URL = "https://example.com/your-video-post/"
-
-# Listing mode: URL of a page that links to multiple video pages.
-# When non-empty, the pipeline extracts all video-page URLs from this page
-# (and subsequent paginated pages) and processes each one automatically.
-# Leave empty to run in single-video mode using TARGET_URL instead.
-LISTING_URL = ""
+# URL of a video page or a listing/index page.
+# The site profile is auto-selected from the root domain of this URL.
+# If the matched profile has a non-empty LISTING_PAGE_SELECTOR, this URL is
+# treated as a listing page (listing mode); otherwise it is treated as a
+# direct video page (single-video mode).
+URL = "https://example.com/your-video-post/"
 
 # =============================================================================
-# SITE SETTINGS — configure once per target site
+# SITE SETTINGS — fallback defaults (overridden by site profile when URL is set)
 # =============================================================================
 
-# CSS selector that finds video-page links on a listing page.
-# Change this to match the HTML structure of the target site.
-LISTING_PAGE_SELECTOR = ".site-main > div > article a"
+# Attribute to read from each matched listing element to obtain the video URL.
+LISTING_URL_ATTR = "href"
 
-# Optional regex to extract a sub-folder name from LISTING_URL (group 1 is used
-# as the directory name). Set to "" to save all downloads flat into VIDEOS_DIR.
-LISTING_SUBDIR_PATTERN = r"/actor/([^/]+)/"
-
-# Domains to skip when intercepting network requests (e.g. ad or tracker CDNs).
-# Add any CDN hostnames here that serve ads/tracking rather than the main video.
-BLOCKED_DOMAINS: tuple[str, ...] = ()
-
-# Glob patterns matched against the filename portion of each intercepted request URL.
-# A request is captured as a master playlist if ANY pattern matches (case-insensitive).
-# Use lowercase patterns. Examples: "*master*", "index.*", "*.m3u8"
-MASTER_PLAYLIST_PATTERNS: tuple[str, ...] = ("master*",)
-
-# CSS selectors tried in order to close popups/cookie banners.
-# Edit this list to match your target site. Order matters — first visible match is clicked.
-OVERLAY_DISMISS_SELECTORS: list[str] = [
-    "button[aria-label*='close' i]",
-    "button[aria-label*='dismiss' i]",
-    "[class*='close' i][role='button']",
-    "[class*='popup' i] [class*='close' i]",
-    "[class*='modal' i] [class*='close' i]",
-    "[class*='overlay' i] [class*='close' i]",
-    "button[class*='accept' i]",
-    "button[id*='accept' i]",
-    ".cc-btn.cc-dismiss",
-]
-
-# Quality tier when a master playlist offers multiple streams (sorted by bandwidth):
-#   0 = lowest bandwidth / smallest file
-#   1 = medium (middle stream; favours higher when stream count is even)
-#   2 = highest bandwidth / largest file
-STREAM_QUALITY = 1
+# Controls how many videos are downloaded in listing mode.
+#   "all"   — download every video found (default)
+#   "first" — stop after the first successful download
+DOWNLOAD_MODE = "all"
 
 # =============================================================================
 # OUTPUT
