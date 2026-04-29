@@ -188,8 +188,9 @@ def _run_listing_mode(log: Logger, start_time: float) -> None:
         else:
             log.info(f"[*] No videos found in {effective_dir} — skipped list step")
 
-        renamed, skipped_renames = rename_files(effective_dir)
-        log.info(f"[*] Rename complete: {renamed} renamed, {skipped_renames} skipped")
+        if os.path.isdir(effective_dir):
+            renamed, skipped_renames = rename_files(effective_dir)
+            log.info(f"[*] Rename complete: {renamed} renamed, {skipped_renames} skipped")
 
 
 def _validate_config() -> None:
